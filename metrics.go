@@ -44,6 +44,14 @@ type Monitor struct {
 	// AckOpts optional options for the message acknowledgements counter.
 	AckOpts prometheus.CounterOpts
 
+	// Namespace will be used on all metrics unless overwritten by the
+	// specific metric config.
+	Namespace string
+
+	// Subsystem will be used on all metrics unless overwritten by the
+	// specific metric config.
+	Subsystem string
+
 	processed  *prometheus.HistogramVec
 	checkpoint *prometheus.CounterVec
 	ack        *prometheus.CounterVec
@@ -178,6 +186,12 @@ func (m *Monitor) buildProcessed(opts prometheus.HistogramOpts) *prometheus.Hist
 	if opts.Help == "" {
 		opts.Help = "Number of processed messages"
 	}
+	if opts.Namespace == "" {
+		opts.Namespace = m.Namespace
+	}
+	if opts.Subsystem == "" {
+		opts.Subsystem = m.Subsystem
+	}
 
 	h := prometheus.NewHistogramVec(opts, metricKeys())
 	m.processed = h
@@ -191,6 +205,12 @@ func (m *Monitor) buildCheckpoint(opts prometheus.CounterOpts) *prometheus.Count
 	if opts.Help == "" {
 		opts.Help = "Number of message checkpoints executed"
 	}
+	if opts.Namespace == "" {
+		opts.Namespace = m.Namespace
+	}
+	if opts.Subsystem == "" {
+		opts.Subsystem = m.Subsystem
+	}
 
 	h := prometheus.NewCounterVec(opts, metricKeys(checkpointKey))
 	m.checkpoint = h
@@ -203,6 +223,12 @@ func (m *Monitor) buildAck(opts prometheus.CounterOpts) *prometheus.CounterVec {
 	}
 	if opts.Help == "" {
 		opts.Help = "Number of message acknowledgements executed"
+	}
+	if opts.Namespace == "" {
+		opts.Namespace = m.Namespace
+	}
+	if opts.Subsystem == "" {
+		opts.Subsystem = m.Subsystem
 	}
 
 	h := prometheus.NewCounterVec(opts, metricKeys(operationKey))

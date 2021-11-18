@@ -72,8 +72,12 @@ func TestProcessedMessages(t *testing.T) {
 
 	reg := prometheus.NewRegistry()
 	m := Monitor{
-		Registerer:    reg,
-		ProcessedOpts: prometheus.HistogramOpts{Buckets: []float64{1}},
+		Registerer: reg,
+		ProcessedOpts: prometheus.HistogramOpts{
+			Buckets:   []float64{1},
+			Namespace: "custom_ns",
+		},
+		Namespace: "ns",
 	}
 
 	r := pubsub.Router{
@@ -126,35 +130,35 @@ func TestProcessedMessages(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, mfs, 3)
 
-	requireMetricFamily(t, mfs[0], "pubsub_message_acknowledgements", promclient.MetricType_COUNTER)
-	require.Len(t, mfs[0].Metric, 3)
-	requireMetric(t, mfs[0].Metric[0], expectedAckMetrics[0])
-	requireMetric(t, mfs[0].Metric[1], expectedAckMetrics[1])
-	requireMetric(t, mfs[0].Metric[2], expectedAckMetrics[2])
-
-	requireMetricFamily(t, mfs[1], "pubsub_message_checkpoint", promclient.MetricType_COUNTER)
-	require.Len(t, mfs[1].Metric, 8)
-	requireMetric(t, mfs[1].Metric[0], expectedCheckpointMetrics[0])
-	requireMetric(t, mfs[1].Metric[1], expectedCheckpointMetrics[1])
-	requireMetric(t, mfs[1].Metric[2], expectedCheckpointMetrics[2])
-	requireMetric(t, mfs[1].Metric[3], expectedCheckpointMetrics[3])
-	requireMetric(t, mfs[1].Metric[4], expectedCheckpointMetrics[4])
-	requireMetric(t, mfs[1].Metric[5], expectedCheckpointMetrics[5])
-	requireMetric(t, mfs[1].Metric[6], expectedCheckpointMetrics[6])
-	requireMetric(t, mfs[1].Metric[7], expectedCheckpointMetrics[7])
-
 	resetSum := 0.0
-	requireMetricFamily(t, mfs[2], "pubsub_message_processed", promclient.MetricType_HISTOGRAM)
-	require.Len(t, mfs[2].Metric, 2)
-	require.InDelta(t, 0.05, *mfs[2].Metric[0].Histogram.SampleSum, 0.005)
-	require.InDelta(t, 0.025, *mfs[2].Metric[1].Histogram.SampleSum, 0.005)
+	requireMetricFamily(t, mfs[0], "custom_ns_pubsub_message_processed", promclient.MetricType_HISTOGRAM)
+	require.Len(t, mfs[0].Metric, 2)
+	require.InDelta(t, 0.05, *mfs[0].Metric[0].Histogram.SampleSum, 0.005)
+	require.InDelta(t, 0.025, *mfs[0].Metric[1].Histogram.SampleSum, 0.005)
 
 	// reset sum timings so we can test against a string
-	mfs[2].Metric[0].Histogram.SampleSum = &resetSum
-	mfs[2].Metric[1].Histogram.SampleSum = &resetSum
+	mfs[0].Metric[0].Histogram.SampleSum = &resetSum
+	mfs[0].Metric[1].Histogram.SampleSum = &resetSum
 
-	requireMetric(t, mfs[2].Metric[0], expectedProcessedMetrics[0])
-	requireMetric(t, mfs[2].Metric[1], expectedProcessedMetrics[1])
+	requireMetric(t, mfs[0].Metric[0], expectedProcessedMetrics[0])
+	requireMetric(t, mfs[0].Metric[1], expectedProcessedMetrics[1])
+
+	requireMetricFamily(t, mfs[1], "ns_pubsub_message_acknowledgements", promclient.MetricType_COUNTER)
+	require.Len(t, mfs[1].Metric, 3)
+	requireMetric(t, mfs[1].Metric[0], expectedAckMetrics[0])
+	requireMetric(t, mfs[1].Metric[1], expectedAckMetrics[1])
+	requireMetric(t, mfs[1].Metric[2], expectedAckMetrics[2])
+
+	requireMetricFamily(t, mfs[2], "ns_pubsub_message_checkpoint", promclient.MetricType_COUNTER)
+	require.Len(t, mfs[2].Metric, 8)
+	requireMetric(t, mfs[2].Metric[0], expectedCheckpointMetrics[0])
+	requireMetric(t, mfs[2].Metric[1], expectedCheckpointMetrics[1])
+	requireMetric(t, mfs[2].Metric[2], expectedCheckpointMetrics[2])
+	requireMetric(t, mfs[2].Metric[3], expectedCheckpointMetrics[3])
+	requireMetric(t, mfs[2].Metric[4], expectedCheckpointMetrics[4])
+	requireMetric(t, mfs[2].Metric[5], expectedCheckpointMetrics[5])
+	requireMetric(t, mfs[2].Metric[6], expectedCheckpointMetrics[6])
+	requireMetric(t, mfs[2].Metric[7], expectedCheckpointMetrics[7])
 }
 
 var expectedAckMetrics = []string{
