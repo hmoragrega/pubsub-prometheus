@@ -33,11 +33,11 @@ publisher := pubsubprom.InstrumentPublisher(publisher)
 
 ## Configuration
 
-The names of the metrics can be tweaked in multiple ways:
+The names of the metrics can be tweaked in multiple ways:  
+The monitor accepts a namespace and subsystem option that will be applied to all metrics.  
+You can also tweak the name of a single metric and other parameters by adjusting the prometheus option struct.  
 
-The monitor accepts a namespace and subsystem option that will be applied to all metrics.
-
-You can also tweak the name of a single metric and other parameters by adjusting the prometheus option struct.
+You can pass custom constant labels to all the metric.
 
 ## Provided Metrics
 

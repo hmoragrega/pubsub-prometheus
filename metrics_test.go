@@ -84,8 +84,10 @@ func TestProcessedMessages(t *testing.T) {
 		},
 		PublishOpts: prometheus.HistogramOpts{
 			Buckets: []float64{1},
+			ConstLabels: map[string]string{"more": "custom"},
 		},
-		Namespace: "ns",
+		ConstLabels: map[string]string{"const": "label"},
+		Namespace:   "ns",
 	}
 
 	r := pubsub.Router{
@@ -191,40 +193,40 @@ func requireMetrics(t *testing.T, metrics []*promclient.Metric, want []string) {
 }
 
 var expectedAckMetrics = []string{
-	`label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"ack" > counter:<value:1 > `,
-	`label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"nack" > counter:<value:1 > `,
-	`label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"re-schedule" > counter:<value:1 > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"ack" > counter:<value:1 > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"nack" > counter:<value:1 > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > label:<name:"operation" value:"re-schedule" > counter:<value:1 > `,
 }
 
 var expectedCheckpointMetrics = []string{
-	`label:<name:"checkpoint" value:"ack" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
-	`label:<name:"checkpoint" value:"ack" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
-	`label:<name:"checkpoint" value:"handler" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
-	`label:<name:"checkpoint" value:"handler" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"true" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
-	`label:<name:"checkpoint" value:"receive" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
-	`label:<name:"checkpoint" value:"receive" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
-	`label:<name:"checkpoint" value:"unmarshal" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
-	`label:<name:"checkpoint" value:"unmarshal" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
+	`label:<name:"checkpoint" value:"ack" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
+	`label:<name:"checkpoint" value:"ack" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
+	`label:<name:"checkpoint" value:"handler" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
+	`label:<name:"checkpoint" value:"handler" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"true" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
+	`label:<name:"checkpoint" value:"receive" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
+	`label:<name:"checkpoint" value:"receive" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
+	`label:<name:"checkpoint" value:"unmarshal" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
+	`label:<name:"checkpoint" value:"unmarshal" > label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
 }
 
 var expectedProcessedMetrics = []string{
-	`label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > histogram:<sample_count:2 sample_sum:0 bucket:<cumulative_count:2 upper_bound:1 > > `,
-	`label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > histogram:<sample_count:2 sample_sum:0 bucket:<cumulative_count:2 upper_bound:1 > > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
 }
 
 var expectedConsumedMetrics = []string{
-	`label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
-	`label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-a" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-a" > label:<name:"msg_version" value:"byte:s" > counter:<value:2 > `,
+	`label:<name:"const" value:"label" > label:<name:"consumer" value:"consumer-b" > label:<name:"error" value:"false" > label:<name:"msg_name" value:"event-b" > label:<name:"msg_version" value:"byte:s" > counter:<value:1 > `,
 }
 
 var expectedPublishingMetrics = []string{
-	`label:<name:"error" value:"false" > label:<name:"topic" value:"consumer-a" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
-	`label:<name:"error" value:"false" > label:<name:"topic" value:"consumer-b" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
+	`label:<name:"const" value:"label" > label:<name:"error" value:"false" > label:<name:"more" value:"custom" > label:<name:"topic" value:"consumer-a" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
+	`label:<name:"const" value:"label" > label:<name:"error" value:"false" > label:<name:"more" value:"custom" > label:<name:"topic" value:"consumer-b" > histogram:<sample_count:1 sample_sum:0 bucket:<cumulative_count:1 upper_bound:1 > > `,
 }
 
 var expectedPublishedMetrics = []string{
-	`label:<name:"topic" value:"consumer-a" > counter:<value:2 > `,
-	`label:<name:"topic" value:"consumer-b" > counter:<value:1 > `,
+	`label:<name:"const" value:"label" > label:<name:"topic" value:"consumer-a" > counter:<value:2 > `,
+	`label:<name:"const" value:"label" > label:<name:"topic" value:"consumer-b" > counter:<value:1 > `,
 }
 
 func requireMetricFamily(t *testing.T, mf *promclient.MetricFamily, name string, mType promclient.MetricType) {

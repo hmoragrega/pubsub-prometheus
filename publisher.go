@@ -50,6 +50,8 @@ func (m *Monitor) buildPublish(opts prometheus.HistogramOpts) *prometheus.Histog
 		opts.Subsystem = m.Subsystem
 	}
 
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
+
 	h := prometheus.NewHistogramVec(opts, []string{topicKey, errorKey})
 	m.publish = h
 	return h
@@ -68,6 +70,8 @@ func (m *Monitor) buildPublished(opts prometheus.CounterOpts) *prometheus.Counte
 	if opts.Subsystem == "" {
 		opts.Subsystem = m.Subsystem
 	}
+
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
 
 	h := prometheus.NewCounterVec(opts, []string{topicKey})
 	m.published = h

@@ -61,6 +61,9 @@ type Monitor struct {
 	// specific metric config.
 	Subsystem string
 
+	// ConstLabels can be used to add constant label in the all the metrics.
+	ConstLabels prometheus.Labels
+
 	processed  *prometheus.HistogramVec
 	checkpoint *prometheus.CounterVec
 	ack        *prometheus.CounterVec
@@ -214,6 +217,8 @@ func (m *Monitor) buildProcessed(opts prometheus.HistogramOpts) *prometheus.Hist
 		opts.Subsystem = m.Subsystem
 	}
 
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
+
 	h := prometheus.NewHistogramVec(opts, metricKeys())
 	m.processed = h
 	return h
@@ -232,6 +237,8 @@ func (m *Monitor) buildCheckpoint(opts prometheus.CounterOpts) *prometheus.Count
 	if opts.Subsystem == "" {
 		opts.Subsystem = m.Subsystem
 	}
+
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
 
 	h := prometheus.NewCounterVec(opts, metricKeys(checkpointKey))
 	m.checkpoint = h
@@ -252,6 +259,8 @@ func (m *Monitor) buildAck(opts prometheus.CounterOpts) *prometheus.CounterVec {
 		opts.Subsystem = m.Subsystem
 	}
 
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
+
 	h := prometheus.NewCounterVec(opts, metricKeys(operationKey))
 	m.ack = h
 	return h
@@ -270,6 +279,8 @@ func (m *Monitor) buildConsumed(opts prometheus.CounterOpts) *prometheus.Counter
 	if opts.Subsystem == "" {
 		opts.Subsystem = m.Subsystem
 	}
+
+	opts.ConstLabels = mergeLabels(m.ConstLabels, opts.ConstLabels)
 
 	h := prometheus.NewCounterVec(opts, metricKeys())
 	m.consumed = h
@@ -298,6 +309,17 @@ func metricLabels(custom map[string]string, consumerName string, msg pubsub.Rece
 		labels[k] = v
 	}
 	return labels
+}
+
+func mergeLabels(a, b map[string]string) (merged map[string]string) {
+	merged = make(map[string]string, len(a)+len(b))
+	for k, v := range a {
+		merged[k] = v
+	}
+	for k, v := range b {
+		merged[k] = v
+	}
+	return merged
 }
 
 func errorLabel(err error) string {
