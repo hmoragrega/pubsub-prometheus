@@ -2,7 +2,6 @@ package pubsub_prometheus
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -21,6 +20,7 @@ const (
 
 	checkpointKey labelKey = "checkpoint"
 	operationKey  labelKey = "operation"
+	topicKey      labelKey = "topic"
 )
 
 var (
@@ -44,6 +44,15 @@ type Monitor struct {
 	// AckOpts optional options for the message acknowledgements counter.
 	AckOpts prometheus.CounterOpts
 
+	// PublishOpts optional options for the publishing attempts histogram.
+	PublishOpts prometheus.HistogramOpts
+
+	// PublishedOpts optional options for the published messages counter.
+	PublishedOpts prometheus.CounterOpts
+
+	// ConsumedOpts optional options for the subscriber next message counter.
+	ConsumedOpts prometheus.CounterOpts
+
 	// Namespace will be used on all metrics unless overwritten by the
 	// specific metric config.
 	Namespace string
@@ -55,6 +64,9 @@ type Monitor struct {
 	processed  *prometheus.HistogramVec
 	checkpoint *prometheus.CounterVec
 	ack        *prometheus.CounterVec
+	publish    *prometheus.HistogramVec
+	published  *prometheus.CounterVec
+	consumed   *prometheus.CounterVec
 
 	once        sync.Once
 	registerErr error
@@ -78,6 +90,9 @@ func (m *Monitor) Register() error {
 			m.buildProcessed(m.ProcessedOpts),
 			m.buildCheckpoint(m.CheckpointOpts),
 			m.buildAck(m.AckOpts),
+			m.buildPublish(m.PublishOpts),
+			m.buildPublished(m.PublishedOpts),
+			m.buildConsumed(m.ConsumedOpts),
 		}
 
 		result := make(chan error, 4)
@@ -99,44 +114,44 @@ func (m *Monitor) Register() error {
 	return m.registerErr
 }
 
-// MustInstrumentWithMonitor helper to instrument a router and returns the same instance,
+// MustInstrumentRouterWithMonitor helper to instrument a router and returns the same instance,
 // use it for one line router initializations.
 //
 // It will panic on metric registration error.
-func MustInstrumentWithMonitor(monitor *Monitor, router *pubsub.Router) *pubsub.Router {
-	return monitor.MustInstrument(router)
+func MustInstrumentRouterWithMonitor(monitor *Monitor, router *pubsub.Router) *pubsub.Router {
+	return monitor.MustInstrumentRouter(router)
 }
 
-// MustInstrument helper to instrument a router and returns the same instance,
+// MustInstrumentRouter helper to instrument a router and returns the same instance,
 // use it for one line router initializations.
 //
 // It will panic on metric registration error.
-func MustInstrument(router *pubsub.Router) *pubsub.Router {
-	return MustInstrumentWithMonitor(&Monitor{}, router)
+func MustInstrumentRouter(router *pubsub.Router) *pubsub.Router {
+	return MustInstrumentRouterWithMonitor(&Monitor{}, router)
 }
 
-// MustInstrument helper to instrument a router and returns the same instance.
+// MustInstrumentRouter helper to instrument a router and returns the same instance.
 //
 // It will panic on metric registration error.
-func (m *Monitor) MustInstrument(router *pubsub.Router) *pubsub.Router {
-	if err := m.Instrument(router); err != nil {
+func (m *Monitor) MustInstrumentRouter(router *pubsub.Router) *pubsub.Router {
+	if err := m.InstrumentRouter(router); err != nil {
 		panic(err)
 	}
 	return router
 }
 
-// InstrumentWithMonitor helper to instrument a router returning any errors that may happen.
-func InstrumentWithMonitor(monitor *Monitor, router *pubsub.Router) error {
-	return monitor.Instrument(router)
+// InstrumentRouterWithMonitor helper to instrument a router returning any errors that may happen.
+func InstrumentRouterWithMonitor(monitor *Monitor, router *pubsub.Router) error {
+	return monitor.InstrumentRouter(router)
 }
 
-// Instrument helper to instrument a router returning any errors that may happen.
-func Instrument(router *pubsub.Router) error {
-	return InstrumentWithMonitor(&Monitor{}, router)
+// InstrumentRouter helper to instrument a router returning any errors that may happen.
+func InstrumentRouter(router *pubsub.Router) error {
+	return InstrumentRouterWithMonitor(&Monitor{}, router)
 }
 
-// Instrument a router returning any errors that may happen.
-func (m *Monitor) Instrument(router *pubsub.Router) error {
+// InstrumentRouter a router returning any errors that may happen.
+func (m *Monitor) InstrumentRouter(router *pubsub.Router) error {
 	if err := m.Register(); err != nil {
 		return err
 	}
@@ -150,16 +165,22 @@ func (m *Monitor) Instrument(router *pubsub.Router) error {
 	// processed messages
 	router.OnProcess = pubsub.WrapOnProcess(router.OnProcess, m.onProcess)
 
-	// acknowledgements
-	router.MessageModifier = pubsub.WrapMessageModifier(router.MessageModifier, messageWrapper(m.ack))
+	// acknowledgements and consume operations
+	router.OnNext = pubsub.WrapNext(router.OnNext, m.onNext)
 
 	return nil
 }
 
-func messageWrapper(ack *prometheus.CounterVec) pubsub.MessageModifier {
-	return func(ctx context.Context, consumerName string, message pubsub.ReceivedMessage) pubsub.ReceivedMessage {
-		return wrap(message, consumerName, ack)
+func (m *Monitor) onNext(_ context.Context, consumerName string, next pubsub.Next) pubsub.Next {
+	if msg := next.Message; msg != nil {
+		next.Message = wrap(msg, consumerName, m.ack)
 	}
+
+	m.consumed.With(
+		metricLabels(nil, consumerName, next.Message, next.Err)).
+		Add(1)
+
+	return next
 }
 
 // OnProcess will sent a histogram metric
@@ -236,19 +257,52 @@ func (m *Monitor) buildAck(opts prometheus.CounterOpts) *prometheus.CounterVec {
 	return h
 }
 
+func (m *Monitor) buildConsumed(opts prometheus.CounterOpts) *prometheus.CounterVec {
+	if opts.Name == "" {
+		opts.Name = "pubsub_message_consumed"
+	}
+	if opts.Help == "" {
+		opts.Help = "Counter consumed next message"
+	}
+	if opts.Namespace == "" {
+		opts.Namespace = m.Namespace
+	}
+	if opts.Subsystem == "" {
+		opts.Subsystem = m.Subsystem
+	}
+
+	h := prometheus.NewCounterVec(opts, metricKeys())
+	m.consumed = h
+	return h
+}
+
 func metricKeys(keys ...string) []string {
 	return append(keys, commonLabels...)
 }
 
 func metricLabels(custom map[string]string, consumerName string, msg pubsub.ReceivedMessage, err error) map[string]string {
+	var version string
+	var msgName string
+	if msg != nil {
+		version = msg.Version()
+		msgName = msg.Name()
+	}
+
 	labels := map[string]string{
 		consumerKey:   consumerName,
-		msgNameKey:    msg.Name(),
-		msgVersionKey: msg.Version(),
-		errorKey:      fmt.Sprintf("%v", err != nil),
+		msgNameKey:    msgName,
+		msgVersionKey: version,
+		errorKey:      errorLabel(err),
 	}
 	for k, v := range custom {
 		labels[k] = v
 	}
 	return labels
+}
+
+func errorLabel(err error) string {
+	if err != nil {
+		return "true"
+	}
+	return "false"
 }
