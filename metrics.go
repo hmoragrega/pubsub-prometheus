@@ -24,6 +24,8 @@ const (
 )
 
 var (
+	defaultMonitor Monitor
+
 	commonLabels = []string{consumerKey, msgNameKey, msgVersionKey, errorKey}
 )
 
@@ -130,7 +132,7 @@ func MustInstrumentRouterWithMonitor(monitor *Monitor, router *pubsub.Router) *p
 //
 // It will panic on metric registration error.
 func MustInstrumentRouter(router *pubsub.Router) *pubsub.Router {
-	return MustInstrumentRouterWithMonitor(&Monitor{}, router)
+	return MustInstrumentRouterWithMonitor(&defaultMonitor, router)
 }
 
 // MustInstrumentRouter helper to instrument a router and returns the same instance.
@@ -150,7 +152,7 @@ func InstrumentRouterWithMonitor(monitor *Monitor, router *pubsub.Router) error 
 
 // InstrumentRouter helper to instrument a router returning any errors that may happen.
 func InstrumentRouter(router *pubsub.Router) error {
-	return InstrumentRouterWithMonitor(&Monitor{}, router)
+	return InstrumentRouterWithMonitor(&defaultMonitor, router)
 }
 
 // InstrumentRouter a router returning any errors that may happen.

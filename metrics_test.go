@@ -18,7 +18,17 @@ func TestDefaultInstrument(t *testing.T) {
 	t.Cleanup(resetRegisterer)
 
 	require.NoError(t, InstrumentRouter(&pubsub.Router{}))
-	require.NotNil(t, InstrumentPublisher(pubsub.NoOpPublisher()))
+	require.NotPanics(t, func() {
+		MustInstrumentRouter(&pubsub.Router{})
+	})
+
+	pub, err := InstrumentPublisher(pubsub.NoOpPublisher())
+	require.NoError(t, err)
+	require.NotNil(t, pub)
+
+	require.NotPanics(t, func() {
+		_ = MustInstrumentPublisher(pubsub.NoOpPublisher())
+	})
 }
 
 func TestInstrumentMultipleRouters(t *testing.T) {
@@ -38,11 +48,26 @@ func TestInstrumentMultipleRouters(t *testing.T) {
 	})
 }
 
+func TestInstrumentPublisher(t *testing.T) {
+	t.Cleanup(resetRegisterer)
+
+	require.NotPanics(t, func() {
+		MustInstrumentPublisherWithMonitor(&Monitor{}, pubsub.NoOpPublisher())
+	})
+
+	t.Run("without new registry ot panics on successive calls on different monitors", func(t *testing.T) {
+		require.Panics(t, func() {
+			MustInstrumentPublisherWithMonitor(&Monitor{}, pubsub.NoOpPublisher())
+		})
+	})
+}
+
 func TestInstrumentMultipleMonitor(t *testing.T) {
 	t.Cleanup(resetRegisterer)
 
 	var r pubsub.Router
-	MustInstrumentRouter(&r)
+	var m Monitor
+	MustInstrumentRouterWithMonitor(&m, &r)
 
 	t.Run("panics if the registerer is not different", func(t *testing.T) {
 		require.Panics(t, func() {
@@ -83,7 +108,7 @@ func TestProcessedMessages(t *testing.T) {
 			Namespace: "custom_ns",
 		},
 		PublishOpts: prometheus.HistogramOpts{
-			Buckets: []float64{1},
+			Buckets:     []float64{1},
 			ConstLabels: map[string]string{"more": "custom"},
 		},
 		ConstLabels: map[string]string{"const": "label"},
@@ -118,7 +143,7 @@ func TestProcessedMessages(t *testing.T) {
 				return publisher.Publish(ctx, topic, envelopes...)
 			})
 		},
-		m.InstrumentPublisher,
+		m.MustInstrumentPublisher,
 	)
 
 	require.NoError(t, r.Register(consumerA, envPub.Subscriber(consumerA), slowHandler))
